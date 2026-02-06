@@ -15,20 +15,20 @@ from flask import Flask
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 XAPIVERSE_KEY = os.getenv("XAPIVERSE_KEY")
 
-FORCE_CHANNEL = "@techbittu69"
-FORCE_CHANNEL_LINK = "https://t.me/techbittu69"
+FORCE_CHANNEL = "@terabox_directlinks"
+FORCE_CHANNEL_LINK = "https://t.me/terabox_directlinks"
 
-# ---------------- LOGGING ---------------
+# ---------------- LOGGING ----------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 if not BOT_TOKEN or not XAPIVERSE_KEY:
-    raise SystemExit("❌ Missing BOT_TOKEN or XAPIVERSE_KEY")
+    raise SystemExit("Missing BOT_TOKEN or XAPIVERSE_KEY")
 
-# ---------------- BOT -------------------
+# ---------------- BOT ----------------
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
-# ---------------- FLASK -----------------
+# ---------------- FLASK ----------------
 app = Flask(__name__)
 
 @app.route("/")
@@ -43,6 +43,17 @@ def is_user_joined(user_id: int) -> bool:
     except Exception:
         return False
 
+def force_join_markup():
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton("📢 Join Channel", url=FORCE_CHANNEL_LINK),
+        InlineKeyboardButton(
+            "✅ Joined",
+            url=f"https://t.me/{bot.get_me().username}?start"
+        )
+    )
+    return markup
+
 # ---------------- TERABOX API ----------------
 def get_terabox_direct_link(share_url: str) -> str:
     api_url = "https://xapiverse.com/api/terabox"
@@ -51,15 +62,15 @@ def get_terabox_direct_link(share_url: str) -> str:
         "xAPIverse-Key": XAPIVERSE_KEY
     }
 
-    response = requests.post(
+    r = requests.post(
         api_url,
         headers=headers,
         json={"url": share_url},
         timeout=60
     )
-    response.raise_for_status()
+    r.raise_for_status()
 
-    data = response.json()
+    data = r.json()
     files = data.get("list", [])
     if not files:
         raise Exception("No file found")
@@ -76,68 +87,50 @@ def download_video(url: str, filename: str):
     with requests.get(url, stream=True, timeout=60) as r:
         r.raise_for_status()
         with open(filename, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1024 * 1024):
+            for chunk in r.iter_content(1024 * 1024):
                 if chunk:
                     f.write(chunk)
 
-# ---------------- BOT HANDLERS ----------------
+# ---------------- START ----------------
 @bot.message_handler(commands=["start", "help"])
 def start(message: Message):
+    user_id = message.from_user.id
+
+    if not is_user_joined(user_id):
+        bot.reply_to(
+            message,
+            "⚠️ <b>Access Restricted</b>\n\n"
+            "Please join our channel to use this bot.",
+            reply_markup=force_join_markup()
+        )
+        return
+
     bot.reply_to(
         message,
-        "👋 <b>Terabox Downloader Bot</b>\n\n"
+        "👋 <b>Welcome!</b>\n\n"
         "Send a <b>Terabox link</b> and I’ll download & send the video 🎥"
     )
 
+# ---------------- MAIN HANDLER ----------------
 @bot.message_handler(func=lambda m: True)
 def handle_link(message: Message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
     text = message.text.strip()
+    chat_id = message.chat.id
 
     if "terabox" not in text.lower() and "1024tera" not in text.lower():
         return
 
-    # -------- FORCE JOIN --------
-    if not is_user_joined(user_id):
-        markup = InlineKeyboardMarkup(row_width=1)
-        markup.add(
-            InlineKeyboardButton("📢 Join Channel", url=FORCE_CHANNEL_LINK),
-            InlineKeyboardButton(
-                "✅ Joined",
-                url=f"https://t.me/{bot.get_me().username}?start"
-            )
-        )
-
-        bot.reply_to(
-            message,
-            "⚠️ <b>Access Denied</b>\n\n"
-            "You must join our channel to use this bot.",
-            reply_markup=markup
-        )
-        return
-
-    status = bot.reply_to(message, "⏳ Fetching download link...")
+    status = bot.reply_to(message, "⏳ Fetching video...")
     file_path = "video.mp4"
 
     try:
         direct_url = get_terabox_direct_link(text)
 
-        bot.edit_message_text(
-            "📥 Downloading video...",
-            chat_id,
-            status.message_id
-        )
-
+        bot.edit_message_text("📥 Downloading...", chat_id, status.message_id)
         download_video(direct_url, file_path)
 
-        bot.edit_message_text(
-            "📤 Uploading to Telegram...",
-            chat_id,
-            status.message_id
-        )
+        bot.edit_message_text("📤 Uploading...", chat_id, status.message_id)
 
-        # -------- DOWNLOAD MORE BUTTON --------
         markup = InlineKeyboardMarkup()
         markup.add(
             InlineKeyboardButton(
@@ -150,7 +143,7 @@ def handle_link(message: Message):
             bot.send_video(
                 chat_id,
                 video,
-                caption="✅ Downloaded via Terabot",
+                caption="✅ Downloaded successfully",
                 supports_streaming=True,
                 reply_markup=markup
             )
@@ -176,7 +169,7 @@ def run_bot():
         try:
             bot.infinity_polling(timeout=20, long_polling_timeout=10)
         except Exception as e:
-            logger.error(f"Polling error: {e}")
+            logger.error(e)
             time.sleep(5)
 
 def run_flask():
