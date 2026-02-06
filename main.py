@@ -20,23 +20,23 @@ logger = logging.getLogger(__name__)
 
 if not BOT_TOKEN or not XAPIVERSE_KEY:
     logger.error("Missing BOT_TOKEN or XAPIVERSE_KEY")
-    exit(1)
+    raise SystemExit(1)
 
 # ---------------- BOT ----------------
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ---------------- FLASK (KEEP ALIVE) ----------------
+# ---------------- FLASK ----------------
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Terabox Bot is running ✅", 200
+    return "Bot is running", 200
 
 def run_flask():
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
 
-# ---------------- START COMMAND ----------------
+# ---------------- START ----------------
 @bot.message_handler(commands=["start", "help"])
 def start(message):
     bot.reply_to(message, "Send a Terabox link to stream or download.")
@@ -52,18 +52,94 @@ def handle_link(message):
     status_msg = bot.reply_to(message, "⏳ Generating links...")
 
     try:
-        api_url = "https://xapiverse.com/api/terabox"
-        headers = {
-            "Content-Type": "application/json",
-            "xAPIverse-Key": XAPIVERSE_KEY
-        }
-        payload = {"url": url_text}
-
         response = requests.post(
-            api_url,
-            headers=headers,
-            json=payload,
+            "https://xapiverse.com/api/terabox",
+            headers={
+                "Content-Type": "application/json",
+                "xAPIverse-Key": XAPIVERSE_KEY
+            },
+            json={"url": url_text},
             timeout=60
+        )
+
+        if response.status_code != 200:
+            bot.edit_message_text(
+                message.chat.id,
+                status_msg.message_id,
+                f"❌ API Error: {response.status_code}"
+            )
+            return
+
+        data = response.json()
+        files = data.get("list", [])
+
+        if not files:
+            bot.edit_message_text(
+                message.chat.id,
+                status_msg.message_id,
+                "❌ No file data found."
+            )
+            return
+
+        file_info = files[0]
+        streams = file_info.get("fast_stream_url", {})
+
+        watch_url = (
+            streams.get("720p")
+            or streams.get("480p")
+            or streams.get("360p")
+            or file_info.get("stream_url")
+            or file_info.get("download_link")
+        )
+
+        if not watch_url:
+            bot.edit_message_text(
+                message.chat.id,
+                status_msg.message_id,
+                "❌ No playable stream found."
+            )
+            return
+
+        player_url = f"{PLAYER_BASE}?url={quote_plus(watch_url)}"
+        download_url = file_info.get("download_link")
+        file_name = file_info.get("name", "File Ready")
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("▶️ Watch Online", url=player_url))
+
+        if download_url:
+            markup.add(types.InlineKeyboardButton("⬇️ Download", url=download_url))
+
+        bot.edit_message_text(
+            message.chat.id,
+            status_msg.message_id,
+            f"✅ Ready!\n\n📦 {file_name}",
+            reply_markup=markup
+        )
+
+    except Exception as e:
+        logger.error(e)
+        bot.edit_message_text(
+            message.chat.id,
+            status_msg.message_id,
+            "⚠️ Something went wrong."
+        )
+
+# ---------------- RUN BOT ----------------
+def run_bot():
+    logger.info("Bot started")
+    bot.remove_webhook()
+    while True:
+        try:
+            bot.infinity_polling(timeout=20, long_polling_timeout=10)
+        except Exception as e:
+            logger.error(e)
+            time.sleep(10)
+
+# ---------------- MAIN ----------------
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    run_bot()            timeout=60
         )
 
         if response.status_code != 200:
