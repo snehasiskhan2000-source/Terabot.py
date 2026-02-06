@@ -131,7 +131,7 @@ def handle_link(message: Message):
 
 # ---------------- RUNNERS ----------------
 def run_bot():
-    bot.remove_webhook(drop_pending_updates=True)
+    bot.remove_webhook()
     while True:
         try:
             bot.infinity_polling(timeout=20, long_polling_timeout=10)
