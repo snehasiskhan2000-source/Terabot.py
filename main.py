@@ -28,8 +28,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 XAPIVERSE_KEY = os.getenv("XAPIVERSE_KEY")
 
 # Force Subscribe Config
-CHANNEL_USERNAME = "@terabox_directlinks"
-CHANNEL_LINK = "https://t.me/terabox_directlinks"
+CHANNEL_USERNAME = "@techbittu69"
+CHANNEL_LINK = "https://t.me/techbittu69"
 
 PLAYER_BASE = "https://teraplayer979.github.io/stream-player/"
 
