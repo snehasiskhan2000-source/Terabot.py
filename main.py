@@ -11,7 +11,7 @@ from flask import Flask
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 XAPIVERSE_KEY = os.getenv("XAPIVERSE_KEY")
 
-CHANNEL_USERNAME = "@terabox_directlinks"
+CHANNEL_USERNAME = "@techbittu69"
 
 # ---------------- LOGGING ----------------
 logging.basicConfig(level=logging.INFO)
