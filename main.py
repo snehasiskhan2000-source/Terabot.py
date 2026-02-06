@@ -13,7 +13,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 XAPIVERSE_KEY = os.getenv("XAPIVERSE_KEY")
 
 CHANNEL_USERNAME = "@techbittu69"
-ADMINS = [123456789]  # <-- replace with your Telegram ID
+ADMINS = [5385495093]  # <-- replace with your Telegram ID
 
 DOWNLOAD_DIR = "downloads"
 AUTO_DELETE_AFTER = 600  # seconds (10 min)
