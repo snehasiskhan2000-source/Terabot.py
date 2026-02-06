@@ -10,7 +10,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # ================= CONFIG =================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
-FORCE_CHANNELS = [c.strip() for c in os.environ.get("FORCE_CHANNELS", "").split(",") if c.strip()]
+FORCE_CHANNEL = [c.strip() for c in os.environ.get("FORCE_CHANNEL", "").split(",") if c.strip()]
 PORT = int(os.environ.get("PORT", 10000))
 
 DOWNLOAD_DIR = "downloads"
